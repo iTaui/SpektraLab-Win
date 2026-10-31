@@ -1,0 +1,44 @@
+--- a/engine/src/io/image_writer.cpp
++++ b/engine/src/io/image_writer.cpp
+@@ -74,10 +74,25 @@
+             // Delete the object whose handle this call owns. Reopening a path
+             // to remove it could accidentally remove somebody else's file.
+             FILE_DISPOSITION_INFO disposition{TRUE};
+-            if (!SetFileInformationByHandle(handle_, FileDispositionInfo, &disposition, sizeof disposition)) {
++            // Windows refuses the first disposition request on a freshly created
++            // file with ERROR_ACCESS_DENIED (measured on Windows 11 24H2 build
++            // 26100, independently of the share mode); the same request succeeds
++            // on the next attempt. Without this bounded retry the rollback never
++            // happens and a failed export leaves a partial TIFF behind.
++            bool removed = false;
++            DWORD failure = ERROR_SUCCESS;
++            for (int attempt = 0; attempt < 20 && !removed; ++attempt) {
++                if (SetFileInformationByHandle(handle_, FileDispositionInfo, &disposition, sizeof disposition)) {
++                    removed = true;
++                } else {
++                    failure = GetLastError();
++                    if (failure != ERROR_ACCESS_DENIED && failure != ERROR_SHARING_VIOLATION) break;
++                    Sleep(5);
++                }
++            }
++            if (!removed) {
+                 // Destruction may be unwinding an allocation failure; keep
+                 // handle cleanup non-throwing even if the message cannot grow.
+-                const DWORD failure = GetLastError();
+                 try { error_ += "; partial TIFF cleanup failed (Windows error " + std::to_string(failure) + ")"; }
+                 catch (...) {}
+             }
+@@ -85,7 +100,12 @@
+         CloseHandle(handle_);
+     }
+     bool open(const std::filesystem::path& path) {
+-        handle_ = CreateFileW(path.c_str(), GENERIC_READ | GENERIC_WRITE | DELETE, 0, nullptr, CREATE_NEW,
++        // FILE_SHARE_DELETE is required for this same handle to be able to set
++        // the file's disposition below: with a zero share mode Windows refuses
++        // SetFileInformationByHandle(FileDispositionInfo) with ERROR_ACCESS_DENIED,
++        // so a partially written TIFF could never be rolled back. Read and write
++        // stay unshared, so the file remains exclusive while it is open.
++        handle_ = CreateFileW(path.c_str(), GENERIC_READ | GENERIC_WRITE | DELETE, FILE_SHARE_DELETE, nullptr, CREATE_NEW,
+                               FILE_ATTRIBUTE_NORMAL, nullptr);
+         if (handle_ != INVALID_HANDLE_VALUE) return true;
+         error_ = "cannot create TIFF without overwriting (Windows error " + std::to_string(GetLastError()) + ")";

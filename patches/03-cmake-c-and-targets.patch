@@ -1,0 +1,41 @@
+--- a/windows_UI/CMakeLists.txt
++++ b/windows_UI/CMakeLists.txt
+@@ -3,7 +3,10 @@
+ # Also usable as add_subdirectory(windows_UI) after the engine defines
+ # spk_desktop_host. The standalone mode never modifies the engine checkout.
+ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+-    project(SpektraLabWindowsUI LANGUAGES CXX)
++    # The engine it pulls in below compiles third_party/volk/volk.c, so the C
++    # language must be enabled here too; CXX alone makes generation fail with
++    # "Missing variable is: CMAKE_C_CREATE_STATIC_LIBRARY".
++    project(SpektraLabWindowsUI LANGUAGES C CXX)
+     include(CTest)
+     set(SPEKTRALAB_SOURCE_ROOT "" CACHE PATH "Source tree supplying engine/")
+     if(NOT EXISTS "${SPEKTRALAB_SOURCE_ROOT}/engine/CMakeLists.txt")
+@@ -24,7 +27,8 @@
+     src/main.cpp src/PreviewController.hpp src/PreviewController.cpp
+     src/FrameOutput.hpp src/FrameOutput.cpp
+     src/EditStore.hpp src/EditStore.cpp
+-    src/FrameCanvas.hpp src/FrameCanvas.cpp)
++    src/FrameCanvas.hpp src/FrameCanvas.cpp
++    src/app.rc)
+ target_compile_features(SpektraLabQt PRIVATE cxx_std_20)
+ target_link_libraries(SpektraLabQt PRIVATE
+     spk_desktop_host Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::QuickControls2)
+@@ -33,6 +37,16 @@
+     QML_FILES qml/Main.qml qml/Theme.qml qml/Section.qml qml/ActionButton.qml
+     NO_CACHEGEN)
+ set_target_properties(SpektraLabQt PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/app")
++
++# ── MCP 服务器 ────────────────────────────────────────────────────────────
++# 让 AI agent 通过 stdio JSON-RPC 驱动 SpektraLab。只链接 spektralab_core
++# （纯算法，无 Vulkan），所以启动不需要 GPU；渲染类操作调度同目录的
++# spk_raw_render.exe。
++add_executable(spektralab-mcp src/spektralab_mcp.cpp)
++target_compile_features(spektralab-mcp PRIVATE cxx_std_20)
++target_link_libraries(spektralab-mcp PRIVATE spektralab_core)
++set_target_properties(spektralab-mcp PROPERTIES
++    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/app")
+ 
+ # The one resource directory is explicitly adjacent to the executable. No
+ # lookup through another checkout and no Python in the application.
