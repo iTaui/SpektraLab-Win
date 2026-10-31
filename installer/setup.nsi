@@ -1,4 +1,4 @@
-; SpektraLab-Win 安装包
+﻿; SpektraLab-Win 安装包
 ; 仅写入 HKCU（当前用户），不需要管理员权限，不触碰系统级注册表与系统目录。
 Unicode true
 !include "MUI2.nsh"
