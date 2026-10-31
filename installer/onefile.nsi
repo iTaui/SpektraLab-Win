@@ -1,4 +1,4 @@
-; SpektraLab-Win 单文件免安装版
+﻿; SpektraLab-Win 单文件免安装版
 ;
 ; 一个 exe，双击即运行：
 ;   首次运行把 Qt 运行时、QML 模块、引擎资源释放到
