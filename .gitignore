@@ -1,0 +1,31 @@
+# 构建产物
+build/
+dist/
+
+# 依赖与下载缓存
+deps/
+*.7z
+*.zip
+
+# 编译器与链接产物
+*.o
+*.obj
+*.a
+*.lib
+*.dll
+*.exe
+*.pdb
+*.ilk
+
+# 本地验证输出
+logs/
+validation/
+*.bmp
+
+# 编辑器与系统
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
